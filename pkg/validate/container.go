@@ -142,6 +142,27 @@ var _ = framework.KubeDescribe("Container", func() {
 			cmd := []string{"not-exist-command"}
 			verifyExecSyncContainOutput(rc, containerID, cmd)
 		})
+
+		It("runtime should support ContainerStats getting expected error with non-existent container [Conformance]", func() {
+			By("test ContainerStats with non-existent container ID")
+			containerID := "foo"
+			expectError := true
+			expectedErrorStr := "with error: container foo: not found"
+			verifyContainerStats(rc, containerID, expectError, expectedErrorStr)
+		})
+
+		It("runtime should support statistics on container [Conformance]", func() {
+			By("create container")
+			containerID := framework.CreateDefaultContainer(rc, ic, podID, podConfig, "container-for-statistics-test-")
+
+			By("start container")
+			startContainer(rc, containerID)
+
+			By("test ContainerStats")
+			expectError := false
+			expectedErrorStr := ""
+			verifyContainerStats(rc, containerID, expectError, expectedErrorStr)
+		})
 	})
 
 	Context("runtime should support adding volume and device", func() {
@@ -691,4 +712,18 @@ func verifyLogContents(podConfig *runtimeapi.PodSandboxConfig, logPath string, l
 		}
 	}
 	Expect(found).To(BeTrue(), "expected log %q (stream=%q) not found in logs %+v", log, stream, msgs)
+}
+
+// test ContainerStats and make sure the response is right.
+func verifyContainerStats(c internalapi.RuntimeService, containerID string, expectError bool, expectedErrorStr string) {
+	By("verify ContainerStats error output")
+	out, err := c.ContainerStats(containerID)
+	msg := fmt.Sprintf("%v", err)
+	if expectError {
+		Expect(msg).To(ContainSubstring(expectedErrorStr))
+	} else {
+		Expect(out).NotTo(Equal(nil))
+		framework.ExpectNoError(err, "failed to get statistics of container: %v", err)
+	}
+	framework.Logf("verfiy ContainerStats output succeed")
 }
