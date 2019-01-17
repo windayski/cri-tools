@@ -23,7 +23,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -141,6 +143,43 @@ var _ = framework.KubeDescribe("Container", func() {
 			By("test execSync")
 			cmd := []string{"not-exist-command"}
 			verifyExecSyncContainOutput(rc, containerID, cmd)
+		})
+
+		It("runtime should support getting expected error when update resource of container with invalid memory limitation [Conformance]", func() {
+			By("create container")
+			containerID := framework.CreateDefaultContainer(rc, ic, podID, podConfig, "container-for-UpdateContainerResources-negative-test-")
+
+			By("start container")
+			startContainer(rc, containerID)
+
+			By("test UpdateContainerResources with invalid memory")
+			Resources := &runtimeapi.LinuxContainerResources{
+				MemoryLimitInBytes: 1024,
+			}
+			expectError := true
+			expectedErrStr := "Minimal memory should greater than 4M"
+			verifyUpdateContainerResources(rc, containerID, Resources, expectError, expectedErrStr)
+		})
+
+		It("runtime should support updating container resources [Conformance]", func() {
+			By("create container")
+			containerID := framework.CreateDefaultContainer(rc, ic, podID, podConfig, "container-for-UpdateContainerResources-test-")
+
+			By("start container")
+			startContainer(rc, containerID)
+
+			By("test UpdateContainerResources")
+			Resources := &runtimeapi.LinuxContainerResources{
+				CpuPeriod:          1000,
+				CpuQuota:           1200,
+				CpuShares:          1024,
+				CpusetCpus:         "0",
+				CpusetMems:         "0",
+				MemoryLimitInBytes: 4194304,
+			}
+			expectError := false
+			expectedErrStr := ""
+			verifyUpdateContainerResources(rc, containerID, Resources, expectError, expectedErrStr)
 		})
 
 		It("runtime should support ContainerStats getting expected error with non-existent container [Conformance]", func() {
@@ -726,4 +765,83 @@ func verifyContainerStats(c internalapi.RuntimeService, containerID string, expe
 		framework.ExpectNoError(err, "failed to get statistics of container: %v", err)
 	}
 	framework.Logf("verfiy ContainerStats output succeed")
+}
+
+// verifyUpdateContainerResources verifies updates resource of container.
+func verifyUpdateContainerResources(rc internalapi.RuntimeService, containerID string, Resources *runtimeapi.LinuxContainerResources, expectError bool, expectedErrStr string) {
+	out := rc.UpdateContainerResources(containerID, Resources)
+	msg := fmt.Sprintf("%v", out)
+	if expectError {
+		Expect(msg).To(ContainSubstring(expectedErrStr))
+	} else {
+		Expect(out).To(BeNil(), "the return should be nil.")
+		framework.ExpectNoError(out, "failed to get update resources of container: %v", out)
+
+		// check if the cpu.cfs_period_us is updated in the container
+		cpuPeriodFilePath := fmt.Sprintf("/sys/fs/cgroup/cpu/default/%s/cpu.cfs_period_us", containerID)
+		res, err := exec.Command("cat", cpuPeriodFilePath).Output()
+		if err != nil {
+			framework.Failf("failed to execute cat command: %v", err)
+		}
+		cpuPeriod := strconv.FormatInt(Resources.GetCpuPeriod(), 10)
+		if !strings.Contains(string(res), cpuPeriod) {
+			framework.Failf("unexpected output %s expected %s\n", string(res), cpuPeriod)
+		}
+
+		// check if the cpu.cfs_quota_us is updated in the container
+		cpuQuotaFilePath := fmt.Sprintf("/sys/fs/cgroup/cpu/default/%s/cpu.cfs_quota_us", containerID)
+		res, err = exec.Command("cat", cpuQuotaFilePath).Output()
+		if err != nil {
+			framework.Failf("failed to execute cat command: %v", err)
+		}
+		cpuQuota := strconv.FormatInt(Resources.GetCpuQuota(), 10)
+		if !strings.Contains(string(res), cpuQuota) {
+			framework.Failf("unexpected output %s expected %s\n", string(res), cpuQuota)
+		}
+
+		// check if the cpu.shares is updated in the container
+		cpuShareFilePath := fmt.Sprintf("/sys/fs/cgroup/cpu/default/%s/cpu.shares", containerID)
+		res, err = exec.Command("cat", cpuShareFilePath).Output()
+		if err != nil {
+			framework.Failf("failed to execute cat command: %v", err)
+		}
+		cpuShares := strconv.FormatInt(Resources.GetCpuShares(), 10)
+		if !strings.Contains(string(res), cpuShares) {
+			framework.Failf("unexpected output %s expected %s\n", string(res), cpuShares)
+		}
+
+		// check if the cpuset.cpus is updated in the container
+		cpusetCPUsFilePath := fmt.Sprintf("/sys/fs/cgroup/cpuset/default/%s/cpuset.cpus", containerID)
+		res, err = exec.Command("cat", cpusetCPUsFilePath).Output()
+		if err != nil {
+			framework.Failf("failed to execute cat command: %v", err)
+		}
+		cpusetCpus := Resources.GetCpusetCpus()
+		if !strings.Contains(string(res), cpusetCpus) {
+			framework.Failf("unexpected output %s expected %s\n", string(res), cpusetCpus)
+		}
+
+		// check if the cpuset.mems is updated in the container
+		cpusetMemsFilePath := fmt.Sprintf("/sys/fs/cgroup/cpuset/default/%s/cpuset.mems", containerID)
+		res, err = exec.Command("cat", cpusetMemsFilePath).Output()
+		if err != nil {
+			framework.Failf("failed to execute cat command: %v", err)
+		}
+		cpusetMems := Resources.GetCpusetMems()
+		if !strings.Contains(string(res), cpusetMems) {
+			framework.Failf("unexpected output %s expected %s\n", string(res), cpusetMems)
+		}
+
+		// check if the memory.limit_in_bytes is updated in the container
+		memLimitFilePath := fmt.Sprintf("/sys/fs/cgroup/memory/default/%s/memory.limit_in_bytes", containerID)
+		res, err = exec.Command("cat", memLimitFilePath).Output()
+		if err != nil {
+			framework.Failf("failed to execute cat command: %v", err)
+		}
+		memLimit := strconv.FormatInt(Resources.GetMemoryLimitInBytes(), 10)
+		if !strings.Contains(string(res), memLimit) {
+			framework.Failf("unexpected output %s expected %s\n", string(res), memLimit)
+		}
+	}
+	framework.Logf("verfiy UpdateContainerResources output succeed")
 }
