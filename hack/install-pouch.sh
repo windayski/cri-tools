@@ -19,7 +19,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-POUCH_VERSION="5e2c01d0"
+POUCH_VERSION="9df7eab"
 POUCH_REPO=github.com/alibaba/pouch
 WORKDIR="${GOPATH}/src/${POUCH_REPO}"
 
@@ -55,8 +55,7 @@ pouch::install() {
   git fetch --all
   git checkout ${POUCH_VERSION}
 
-  make build
-  TEST_FLAGS= BUILDTAGS="selinux seccomp apparmor" make build-daemon-integration
+  TEST_FLAGS= BUILDTAGS="selinux seccomp apparmor" make build
   sudo env "PATH=$PATH" make install
   cd -
 }
