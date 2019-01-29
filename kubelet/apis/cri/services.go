@@ -56,6 +56,10 @@ type ContainerManager interface {
 	// for the container. If it returns error, new container log file MUST NOT
 	// be created.
 	ReopenContainerLog(ContainerID string) error
+	// PauseContainer pauses the container.
+	PauseContainer(ContainerID string) error
+	// UnpauseContainer unpauses the container.
+	UnpauseContainer(ContainerID string) error
 }
 
 // PodSandboxManager contains methods for operating on PodSandboxes. The methods

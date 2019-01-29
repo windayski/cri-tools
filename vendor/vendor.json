@@ -3,10 +3,10 @@
 	"ignore": "",
 	"package": [
 		{
-			"checksumSHA1": "rdQzbyLh7SWDjZmCeKBMlAHQVZU=",
+			"checksumSHA1": "BQ05KVv9I4YaGkIvUxthzu7ivqw=",
 			"path": "github.com/alibaba/pouch/cri/apis/v1alpha2",
-			"revision": "5e2c01d029820701f63921f5beaaf6c56a94eb8d",
-			"revisionTime": "2018-10-17T04:23:40Z"
+			"revision": "9df7eab68f3c4454191798638b20fdc251b894d5",
+			"revisionTime": "2019-01-22T07:26:34Z"
 		},
 		{
 			"checksumSHA1": "DNWHEf2/4si/ausyXSub1vca0EU=",

@@ -99,6 +99,38 @@ var _ = framework.KubeDescribe("Container", func() {
 			testStartContainer(rc, containerID)
 		})
 
+		It("runtime should support pause and unpause container [Conformance]", func() {
+			By("create container")
+			containerID := framework.CreateDefaultContainer(rc, ic, podID, podConfig, "container-for-pause-unpause-test-")
+
+			By("start container")
+			startContainer(rc, containerID)
+
+			By("get container status")
+			Eventually(func() runtimeapi.ContainerState {
+				return getContainerStatus(rc, containerID).State
+			}, time.Minute, time.Second*4).Should(Equal(runtimeapi.ContainerState_CONTAINER_RUNNING))
+
+			By("pause container")
+			rc.PauseContainer(containerID)
+
+			By("get container status")
+			Eventually(func() runtimeapi.ContainerState {
+				return getContainerStatus(rc, containerID).State
+			}, time.Minute, time.Second*4).Should(Equal(runtimeapi.ContainerState_CONTAINER_PAUSE))
+
+			By("unpause container")
+			rc.UnpauseContainer(containerID)
+
+			By("get container status")
+			Eventually(func() runtimeapi.ContainerState {
+				return getContainerStatus(rc, containerID).State
+			}, time.Minute, time.Second*4).Should(Equal(runtimeapi.ContainerState_CONTAINER_RUNNING))
+
+			By("test stop container")
+			testStopContainer(rc, containerID)
+		})
+
 		It("runtime should support stopping container [Conformance]", func() {
 			By("create container")
 			containerID := framework.CreateDefaultContainer(rc, ic, podID, podConfig, "container-for-stop-test-")
