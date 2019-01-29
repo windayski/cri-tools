@@ -51,6 +51,8 @@ pouch::check_cri_listening() {
 
 # pouchd::install_dependencies downloads and installs dependent packages
 pouch::install_dependencies() {
+  sudo apt-get update
+  sudo apt-get install -y socat
   cd "${WORKDIR}"
   make download-dependencies
   cd -
@@ -58,7 +60,7 @@ pouch::install_dependencies() {
 
 # pouch::stop_dockerd makes sure dockerd is not running
 pouch::stop_dockerd() {
-  if [[ X"" != X"$(pidof docker)" ]]; then
+ if [[ X"" != X"$(pidof dockerd)" ]]; then
     # need to avoid conflict between dockerd and pouchd
     systemctl stop docker
   fi
@@ -66,21 +68,15 @@ pouch::stop_dockerd() {
 
 # pouch:run starts pouch daemon with cri enabled
 pouch::run() {
-  local cri_runtime tmplog_dir pouchd_log sandbox_img flags
+  local cri_runtime pouchd_log sandbox_img flags
 
   cri_runtime=$1
-  tmplog_dir="$(mktemp -d /tmp/integration-daemon-cri-testing-XXXXX)"
-  pouchd_log="${tmplog_dir}/pouchd.log"
-
-  # daemon cri integration coverage profile
-  coverage_profile="${WORKDIR}/coverage/integration_daemon_cri_${cri_runtime}_profile.out"
-  rm -rf "${coverage_profile}"
+  pouchd_log=$2
 
   sandbox_img="gcr.io/google_containers/pause-amd64:3.0"
-  flags=" -test.coverprofile=${coverage_profile} DEVEL"
-  flags="${flags} --enable-cri --cri-version ${cri_runtime} --sandbox-image=${sandbox_img}"
+  flags=" --enable-cri --cri-version ${cri_runtime} --sandbox-image=${sandbox_img}"
 
-  ${WORKDIR}/bin/pouchd-integration ${flags} > $pouchd_log 2>&1 &
+  ${WORKDIR}/bin/pouchd ${flags} > "${pouchd_log}" 2>&1 &
 
   # Wait a while for pouch daemon starting
   sleep 10
@@ -101,12 +97,19 @@ main() {
   fi
 
   pouch::stop_dockerd
-  pouch::run "${cri_runtime}"
+
+  # tmplog_dir stores the background job log data
+  tmplog_dir="$(mktemp -d /tmp/integration-daemon-cri-testing-XXXXX)"
+  pouchd_log="${tmplog_dir}/pouchd.log"
+
+  pouch::run "${cri_runtime}" "${pouchd_log}"
 
   pouchcri_has_listened="$(pouch::check_cri_listening)"
 
   if [[ "${pouchcri_has_listened}" = "false" ]]; then
     echo "pouchcri has not been listened: $(netstat -lx)"
+    echo "there is the daemon log..."
+    cat "${pouchd_log}"
     exit 1
   fi
 

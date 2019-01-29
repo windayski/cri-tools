@@ -1,15 +1,11 @@
 language: go
 sudo: required
-dist: trusty
+dist: xenial
 
 go:
   - "1.10.2"
 
 go_import_path: github.com/kubernetes-sigs/cri-tools
-
-before_install:
-  - sudo env PATH=$PATH GOPATH=$GOPATH hack/install-cni.sh
-  - sudo env PATH=$PATH GOPATH=$GOPATH hack/install-pouch.sh
 
 install:
   - make install.tools
@@ -26,5 +22,7 @@ jobs:
     - stage: Test
       script:
         - make
+        - sudo env PATH=$PATH GOPATH=$GOPATH hack/install-cni.sh
+        - sudo env PATH=$PATH GOPATH=$GOPATH hack/install-pouch.sh
         - sudo env PATH=$PATH GOPATH=$GOPATH hack/run-pouch.sh "v1alpha2"
         - sudo env PATH=$PATH GOPATH=$GOPATH hack/run-critest.sh "v1alpha2"

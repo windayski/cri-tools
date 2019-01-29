@@ -488,3 +488,27 @@ func (r *RemoteRuntimeService) ReopenContainerLog(containerID string) error {
 	}
 	return nil
 }
+
+func (r *RemoteRuntimeService) PauseContainer(containerID string) error {
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	_, err := r.runtimeClient.PauseContainer(ctx, &runtimeapi.PauseContainerRequest{ContainerId: containerID})
+	if err != nil {
+		glog.Errorf("PauseContainer %q from runtime service failed: %v", containerID, err)
+		return err
+	}
+	return nil
+}
+
+func (r *RemoteRuntimeService) UnpauseContainer(containerID string) error {
+	ctx, cancel := getContextWithTimeout(r.timeout)
+	defer cancel()
+
+	_, err := r.runtimeClient.UnpauseContainer(ctx, &runtimeapi.UnpauseContainerRequest{ContainerId: containerID})
+	if err != nil {
+		glog.Errorf("UnpauseContainer %q from runtime service failed: %v", containerID, err)
+		return err
+	}
+	return nil
+}

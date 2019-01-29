@@ -43,7 +43,7 @@ critest::run_e2e() {
         --focus="${CRI_FOCUS}" --ginkgo-flags="--skip=\"${CRI_SKIP}\"" validation
     else
       critest --runtime-endpoint=${POUCH_SOCK} \
-        --ginkgo.focus="${CRI_FOCUS}" --ginkgo.skip="${CRI_SKIP}"
+        --ginkgo.focus="${CRI_FOCUS}" --ginkgo.skip="${CRI_SKIP}" --parallel=8
     fi
 
     code=$?
