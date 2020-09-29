@@ -187,7 +187,7 @@ func main() {
 			// Get config from file.
 			config, err := ReadConfig(configFile)
 			if err != nil {
-				logrus.Fatalf("Falied to load config file: %v", err)
+				logrus.Fatalf("Failed to load config file: %v", err)
 			}
 
 			// Command line flags overrides config file.
